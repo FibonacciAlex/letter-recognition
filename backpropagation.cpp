@@ -35,7 +35,7 @@ Backpropagation::Backpropagation()
 
 void Backpropagation::initialise()
 {
-    SSE = 0;
+    MSE = 0;
     sample=0;
     iterations=0;
     sum = 0;
@@ -46,8 +46,8 @@ void Backpropagation::initialise()
     assignRandomWeights();
 }
 
-double Backpropagation::getError_SSE(){
-    return SSE;
+double Backpropagation::getError_MSE(){
+    return MSE;
 }
 
 
@@ -686,7 +686,7 @@ void Backpropagation::backPropagate( bool l2checked )
 }
 
 /* save log*/
-void Backpropagation::saveLogs(QString fileName, int epoch, double SSE, double LEARNING_RATE, double L2_LAMBDA, QString dataset, QString activationFunc){
+void Backpropagation::saveLogs(QString fileName, int epoch, double SSE, double LEARNING_RATE, double L2_LAMBDA, QString dataset, QString activationFunc, double PGC){
 
     QFile logFile(fileName);
     bool isNewFile = !logFile.exists();
@@ -699,11 +699,11 @@ void Backpropagation::saveLogs(QString fileName, int epoch, double SSE, double L
 
     // If the file is new, write the head of columns
     if (isNewFile) {
-        logStream << "Epoch,SSE,LearningRate,L2_LAMBDA, Dataset, ActivationFunction\n";
+        logStream << "Epoch,SSE,LearningRate,L2_LAMBDA, Dataset, ActivationFunction, PGC\n";
     }
 
     // write logs
-    logStream << epoch << "," << SSE << "," << LEARNING_RATE << "," << L2_LAMBDA <<"," << dataset << "," << activationFunc <<"\n";
+    logStream << epoch << "," << SSE << "," << LEARNING_RATE << "," << L2_LAMBDA <<"," << dataset << "," << activationFunc << "," << PGC <<"\n";
 
     // close the file
     logFile.close();
@@ -834,5 +834,42 @@ bool Backpropagation::saveConfusionMatrixToCSV(QString fileName){
     file.close();  // Close the file after writing
     qDebug() << "Confusion matrix successfully saved to: " << fileName;
     return true;  // Return true on successful save
+}
+
+double Backpropagation::calculatePGC(QString dataset) {
+    int correctClassifications = 0;
+    int total_patterns = NUMBER_OF_PATTERNS;
+
+    if(dataset=="train"){
+        total_patterns = NUMBER_OF_TRAINING_PATTERNS;
+    }else if(dataset=="test"){
+        total_patterns = NUMBER_OF_TEST_PATTERNS;
+    }
+
+    // Iterate through all training patterns
+    for (int i = 0; i < total_patterns; i++) {
+        // Get the input patterns
+        for (int j = 0; j < INPUT_NEURONS; j++) {
+            inputs[j] = letters[i].f[j];  // assuming `letters[i].f[j]` holds the input feature values
+        }
+
+        // Get the expected outputs (ground truth)
+        for (int k = 0; k < OUTPUT_NEURONS; k++) {
+            target[k] = letters[i].outputs[k];  // assuming `letters[i].outputs[k]` holds the expected output values
+        }
+
+        // Feed the inputs through the network to get the predicted outputs
+        feedForward();
+
+        // Compare predicted outputs with target values (ground truth)
+        if (action(actual) == action(target)) {
+            correctClassifications++;
+        }
+    }
+
+    // Calculate PGC (Percentage of Good Classifications)
+    double pgc = (static_cast<double>(correctClassifications) / total_patterns) * 100.0;
+
+    return pgc;
 }
 

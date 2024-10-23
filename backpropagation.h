@@ -2,10 +2,13 @@
 #define BACKPROPAGATION_H
 
 
-
+#include <iostream>
+#include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-
+#include <time.h>
+#include <random>
+#include <chrono>
 
 #include <QDebug>
 
@@ -33,7 +36,7 @@ public:
     double sigmoidDerivative( double val );
     void assignRandomWeights( void );
     double trainNetwork(bool checkbox_L2,int batchsize, QString dataset);
-    double getError_SSE();
+    double getError_MSE();
     int action( double *vector );
     double* testNetwork(LetterStructure testPattern);
     double RAND_WEIGHT();
@@ -43,12 +46,12 @@ public:
     double* softmax(double* input, int size);
     double he_init(int fan_in);
     double xavier_init(int fan_in, int fan_out);
-    void saveLogs(QString fileName, int epoch, double SSE, double LEARNING_RATE, double L2_LAMBDA, QString dataset, QString activationFunc);
+    void saveLogs(QString fileName, int epoch, double SSE, double LEARNING_RATE, double L2_LAMBDA, QString dataset, QString activationFunc, double PGC);
     void clearlogfiles(QString fileName);
     bool shuffleDataset(QString fileName, QString& shuffledFileName);
     QString generateLetter(int index);
     bool saveConfusionMatrixToCSV(QString fileName);
-
+    double calculatePGC(QString dataset);
 
 private:
 
@@ -76,7 +79,7 @@ private:
     double errh2[HIDDEN2_NEURONS];
 
     //-----------------------------------------
-    double SSE;
+    double MSE;
     int i, sample, iterations;
     int sum;
 };

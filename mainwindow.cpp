@@ -90,6 +90,7 @@ void MainWindow::on_pushButton_Read_File_clicked()
     QString msg;
     int i=0;
     int counter[OUTPUT_NEURONS];
+    //set the defalut value of counter
     for (int i=0; i < OUTPUT_NEURONS; i++)
     {
         counter[i] = 0;
@@ -98,7 +99,11 @@ void MainWindow::on_pushButton_Read_File_clicked()
     while(i < NUMBER_OF_PATTERNS){
 
         //e.g. T,2,8,3,5,1,8,13,0,6,6,10,8,0,8,0,8
-        in >> characterSymbol >> t >> letters[i].f[0] >> t >>  letters[i].f[1] >> t >>  letters[i].f[2] >> t >>  letters[i].f[3] >> t >>  letters[i].f[4] >> t >>  letters[i].f[5] >> t >>  letters[i].f[6] >> t >>  letters[i].f[7] >> t >>  letters[i].f[8] >> t >>  letters[i].f[9] >> t >>  letters[i].f[10] >> t >>  letters[i].f[11] >> t >> letters[i].f[12] >> t >> letters[i].f[13] >> t >> letters[i].f[14] >> t >> letters[i].f[15];
+        in >> characterSymbol >> t >> letters[i].f[0] >> t >>  letters[i].f[1] >> t
+            >>  letters[i].f[2] >> t >>  letters[i].f[3] >> t >>  letters[i].f[4] >> t
+            >>  letters[i].f[5] >> t >>  letters[i].f[6] >> t >>  letters[i].f[7] >> t
+            >>  letters[i].f[8] >> t >>  letters[i].f[9] >> t >>  letters[i].f[10] >> t
+            >>  letters[i].f[11] >> t >> letters[i].f[12] >> t >> letters[i].f[13] >> t >> letters[i].f[14] >> t >> letters[i].f[15];
 
         line = in.readLine();
 
@@ -304,8 +309,8 @@ void MainWindow::on_pushButton_Classify_Test_Pattern_clicked()
 
 
 
-    delete[] classificationResults;
-    delete[] outputs;
+    // delete[] classificationResults;
+    // delete[] outputs;
 }
 
 // void MainWindow::on_pushButton_Train_Network_Max_Epochs_clicked()
@@ -652,6 +657,7 @@ void MainWindow::on_pushButton_Clearlog_clicked()
 void MainWindow::on_pushButton_Train_Network_traindata_clicked()
 {
     double SSE = 0.0;
+    double PGC = 0.0;
     QString dataset = "train";
     QString ac;
     QString msg;
@@ -679,7 +685,7 @@ void MainWindow::on_pushButton_Train_Network_traindata_clicked()
     }
 
     MAX_EPOCHS = ui->spinBox_Max_training_Epochs->value();
-    // double maxPGC = ui->spinBox_Max_training_PGC->value();  // Get the Max Training PGC from the screen
+    double maxPGC = ui->spinBox_Max_training_PGC->value();  // Get the Max Training PGC from the screen
     bool checkbox_L2= ui->checkBox_L2Regularization->isChecked();
     int batchsize = ui->horizScrollBar_BatchSize->value();
 
@@ -703,17 +709,30 @@ void MainWindow::on_pushButton_Train_Network_traindata_clicked()
         SSE = bp->trainNetwork(checkbox_L2,BATCH_SIZE,dataset); //trains for 1 epoch
         ui->lcdNumber_SSE_Train->display(SSE);
 
+        // Calculate the current PGC (percentage of correct classification)
+        PGC = bp->calculatePGC(dataset);
+        ui->lcdNumber_percentageOfGoodClassification->display(PGC);
+
         // save log file
-        bp->saveLogs(logFileName, e, SSE, LEARNING_RATE, L2_LAMBDA, dataset, ac);
+        bp->saveLogs(logFileName, e, SSE, LEARNING_RATE, L2_LAMBDA, dataset, ac, PGC);
 
         qApp->processEvents();
 
         update();
         e++;
-        qDebug() << "epoch: " << e << ", SSE = " << SSE<<", Learning rate = "<<LEARNING_RATE<<", L2_LAMBDA ="<<L2_LAMBDA<<", dataset="<<dataset<< ", Activation ="<<ac;
+        qDebug() << "epoch: " << e << ", SSE = " << SSE<<", Learning rate = "<<LEARNING_RATE<<", L2_LAMBDA = "<<L2_LAMBDA<<", dataset = "<<dataset<< ", Activation = "<<ac<<", PGC = "<<PGC;
         msg.append("\nEpoch=");
         msg.append(QString::number(e));
         ui->plainTextEdit_results->setPlainText(msg);
+
+        // PGC Early Stopping Check
+        if (PGC >= maxPGC) {
+            early_stop = true;
+            qDebug() << "Early stopping due to reaching Max PGC: " << PGC;
+            msg.append("\nEarly stopping due to Max PGC reached. Training stopped.");
+            ui->plainTextEdit_results->setPlainText(msg);
+            break;
+        }
 
         // Early Stopping check
         if (SSE < best_SSE) {
@@ -751,6 +770,7 @@ void MainWindow::on_pushButton_Train_Network_traindata_clicked()
 void MainWindow::on_pushButton_Train_Network_testdata_clicked()
 {
     double SSE = 0.0;
+    double PGC = 0.0;
     QString dataset = "test";
     QString ac;
     QString msg;
@@ -776,7 +796,7 @@ void MainWindow::on_pushButton_Train_Network_testdata_clicked()
     }
 
     MAX_EPOCHS = ui->spinBox_Max_training_Epochs->value();
-    // double maxPGC = ui->spinBox_Max_training_PGC->value();  // Get the Max Training PGC from the screen
+    double maxPGC = ui->spinBox_Max_training_PGC->value();  // Get the Max Training PGC from the screen
     bool checkbox_L2= ui->checkBox_L2Regularization->isChecked();
     int batchsize = ui->horizScrollBar_BatchSize->value();
     if(batchsize>0){
@@ -800,8 +820,21 @@ void MainWindow::on_pushButton_Train_Network_testdata_clicked()
         SSE = bp->trainNetwork(checkbox_L2,BATCH_SIZE,dataset); //trains for 1 epoch
         ui->lcdNumber_SSE_Test->display(SSE);
 
+        // Calculate the current PGC (percentage of correct classification)
+        PGC = bp->calculatePGC(dataset);
+        ui->lcdNumber_percentageOfGoodClassification->display(PGC);
+
         // save log file
-        bp->saveLogs(logFileName, e, SSE, LEARNING_RATE, L2_LAMBDA,dataset, ac);
+        bp->saveLogs(logFileName, e, SSE, LEARNING_RATE, L2_LAMBDA,dataset, ac, PGC);
+
+        // PGC Early Stopping Check
+        if (PGC >= maxPGC) {
+            early_stop = true;
+            qDebug() << "Early stopping due to reaching Max PGC: " << PGC;
+            msg.append("\nEarly stopping due to Max PGC reached. Training stopped.");
+            ui->plainTextEdit_results->setPlainText(msg);
+            break;
+        }
 
         // Early Stopping check
         if (SSE < best_SSE) {
@@ -825,7 +858,7 @@ void MainWindow::on_pushButton_Train_Network_testdata_clicked()
 
         update();
         e++;
-        qDebug() << "epoch: " << e << ", SSE = " << SSE<<", Learning rate = "<<LEARNING_RATE<<", L2_LAMBDA ="<<L2_LAMBDA<<", dataset="<<dataset<< ", Activation ="<<ac;
+        qDebug() << "epoch: " << e << ", SSE = " << SSE<<", Learning rate = "<<LEARNING_RATE<<", L2_LAMBDA = "<<L2_LAMBDA<<", dataset = "<<dataset<< ", Activation = "<<ac<<", PGC = "<<PGC;
         msg.append("\nEpoch=");
         msg.append(QString::number(e));
         ui->plainTextEdit_results->setPlainText(msg);
